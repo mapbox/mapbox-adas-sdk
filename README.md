@@ -27,6 +27,7 @@ In a [sample](/samples/android/adas-sdk-example) folder you would find a templat
 ### Install and initialize the NavSDK
 
 [First, follow the installtion guide for Mapbox Navigation SDK](https://docs.mapbox.com/android/navigation/guides/get-started/install/)[, and configure with your Mapbox account credentials.](https://docs.mapbox.com/android/navigation/guides/get-started/install/)
+While adding dependencies, please choose this [approach](https://docs.mapbox.com/android/navigation/guides/get-started/choose-an-approach/#build-a-collection-of-components) and add one more dependency, matching the latest navigation SDK version, ex: `implementation “com.mapbox.navigation:navigator:2.8.0-alpha.3”`
 
 [Initialize the Navigation SDK](https://docs.mapbox.com/android/navigation/guides/get-started/initialization/) and start a trip session to begin consuming and processing data that can power either passive navigation (free-drive mode) or active guidance (turn-by-turn navigation).
 
@@ -38,7 +39,7 @@ The ADASIS module is activated by setting an observer implementing `ADASISv2Mess
 
 ```Kotlin
 mapboxNavigation.experimental.setAdasisMessageCallback(adasisObserver, AdasisConfigBuilder.defaultOptions())
-    
+
 private val adasisObserver = object : ADASISv2MessageCallback {...}
 
 public interface ADASISv2MessageCallback {

@@ -81,7 +81,7 @@ class AdasisActivity : AppCompatActivity(), PermissionsListener, OnMapLongClickL
 
     private companion object {
         private const val LOG_TAG = "ADASIS_Activity"
-        private const val EPS = 0.02
+        private const val EPS = 0.03
     }
 
     private val permissionsManager = PermissionsManager(this)
@@ -118,7 +118,7 @@ class AdasisActivity : AppCompatActivity(), PermissionsListener, OnMapLongClickL
                 NavigationOptions.Builder(this)
                     .routingTilesOptions(
                         RoutingTilesOptions.Builder()
-                            .tilesVersion("2022_07_01-03_00_00")
+                            .tilesVersion("2022_08_06-03_00_00")
                             .build()
                     )
                     .accessToken(getMapboxAccessTokenFromResources())

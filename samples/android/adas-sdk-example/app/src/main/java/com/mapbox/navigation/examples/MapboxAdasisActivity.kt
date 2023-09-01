@@ -20,6 +20,10 @@ import com.mapbox.android.core.permissions.PermissionsListener
 import com.mapbox.android.core.permissions.PermissionsManager
 import com.mapbox.android.core.permissions.PermissionsManager.areLocationPermissionsGranted
 import com.mapbox.api.directions.v5.models.RouteOptions
+import com.mapbox.bindgen.Value
+import com.mapbox.common.TileDataDomain
+import com.mapbox.common.TileStore
+import com.mapbox.common.TileStoreOptions
 import com.mapbox.geojson.Point
 import com.mapbox.maps.CameraOptions
 import com.mapbox.maps.EdgeInsets
@@ -114,11 +118,14 @@ class AdasisActivity : AppCompatActivity(), PermissionsListener, OnMapLongClickL
         if (MapboxNavigationProvider.isCreated()) {
             MapboxNavigationProvider.retrieve()
         } else {
+            val tileStore = TileStore.create()
+            tileStore.setOption(TileStoreOptions.MAPBOX_APIURL, TileDataDomain.ADAS, Value.valueOf("https://mapbox-adas-api-staging.tilestream.net"))
+            tileStore.setOption(TileStoreOptions.MAPBOX_ACCESS_TOKEN, TileDataDomain.ADAS, Value.valueOf(getMapboxAccessTokenFromResources()))
             MapboxNavigationProvider.create(
                 NavigationOptions.Builder(this)
                     .routingTilesOptions(
                         RoutingTilesOptions.Builder()
-                            .tilesVersion("2022_08_06-03_00_00")
+                            .tileStore(tileStore)
                             .build()
                     )
                     .accessToken(getMapboxAccessTokenFromResources())

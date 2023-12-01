@@ -56,6 +56,9 @@ import com.mapbox.navigation.core.replay.route.ReplayRouteMapper
 import com.mapbox.navigation.core.trip.session.LocationMatcherResult
 import com.mapbox.navigation.core.trip.session.LocationObserver
 import com.mapbox.navigation.core.trip.session.RouteProgressObserver
+import com.mapbox.navigation.core.adasis.ADASISv2Message
+import com.mapbox.navigation.core.adasis.ADASISv2MessageCallback
+import com.mapbox.navigation.core.adasis.AdasisConfig
 import com.mapbox.navigation.examples.databinding.LayoutActivityAdasisBinding
 import com.mapbox.navigation.ui.maps.NavigationStyles
 import com.mapbox.navigation.ui.maps.camera.NavigationCamera
@@ -72,15 +75,12 @@ import com.mapbox.navigation.ui.maps.route.line.model.MapboxRouteLineOptions
 import com.mapbox.navigation.ui.maps.route.line.model.NavigationRouteLine
 import com.mapbox.navigation.ui.maps.route.line.model.RouteLineColorResources
 import com.mapbox.navigation.ui.maps.route.line.model.RouteLineResources
-import com.mapbox.navigator.ADASISv2Message
-import com.mapbox.navigator.ADASISv2MessageCallback
-import com.mapbox.navigator.AdasisConfigBuilder
 import java.io.File
 import java.lang.ref.WeakReference
 import java.util.*
 import kotlin.collections.ArrayDeque
 
-
+@OptIn(ExperimentalPreviewMapboxNavigationAPI::class)
 class AdasisActivity : AppCompatActivity(), PermissionsListener, OnMapLongClickListener {
 
     private companion object {
@@ -220,7 +220,7 @@ class AdasisActivity : AppCompatActivity(), PermissionsListener, OnMapLongClickL
         }
         val messages = ArrayList<ADASISv2Message>()
 
-        override fun run(message: ADASISv2Message) {
+        override fun onMessage(message: ADASISv2Message) {
             messages.add(message)
             adasisMsgRender.render(message.toHex())
         }
@@ -520,9 +520,8 @@ class AdasisActivity : AppCompatActivity(), PermissionsListener, OnMapLongClickL
     private fun startSimulation(route: NavigationRoute) {
         adasisObserver.reset()
 
-        mapboxNavigation.experimental.setAdasisMessageCallback(
-            adasisObserver,
-            AdasisConfigBuilder.defaultOptions()
+        mapboxNavigation.setAdasisMessageCallback(AdasisConfig.Builder().build(),
+            adasisObserver
         )
 
         val replayData = replayRouteMapper.mapDirectionsRouteGeometry(route.directionsRoute)
@@ -567,7 +566,7 @@ class AdasisActivity : AppCompatActivity(), PermissionsListener, OnMapLongClickL
 
     @OptIn(ExperimentalPreviewMapboxNavigationAPI::class)
     private fun stopSimulation() {
-        mapboxNavigation.experimental.resetAdasisMessageCallback()
+        mapboxNavigation.resetAdasisMessageCallback()
         saveAdasis()
 
         viewBinding.runAdasis.text = "Run ADASISv2"

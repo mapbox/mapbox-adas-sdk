@@ -69,10 +69,22 @@ android {
     }
 }
 
+repositories{
+    maven {
+        url 'https://api.mapbox.com/downloads/v2/snapshots/maven'
+        authentication {
+            basic(BasicAuthentication)
+        }
+        credentials {
+            username = "mapbox"
+            password = MAPBOX_DOWNLOADS_TOKEN
+        }
+    }
+}
+
 dependencies {
     // Mapbox Navigation SDK
-    implementation "com.mapbox.navigation:android:2.16.0-rc.1"
-    implementation "com.mapbox.navigator:mapbox-navigation-native:156.0.0"
+    implementation "com.mapbox.navigation:android:2.17.0-adas-preview-3-SNAPSHOT"
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.5.31"
     implementation "androidx.core:core-ktx:1.7.0"
     implementation "com.google.android.material:material:1.5.0"

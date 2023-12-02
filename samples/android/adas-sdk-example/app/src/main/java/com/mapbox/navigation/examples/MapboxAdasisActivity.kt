@@ -46,6 +46,10 @@ import com.mapbox.navigation.base.route.NavigationRouterCallback
 import com.mapbox.navigation.base.route.RouterFailure
 import com.mapbox.navigation.base.route.RouterOrigin
 import com.mapbox.navigation.core.MapboxNavigationProvider
+import com.mapbox.navigation.core.adasis.ADASISv2MessageCallback
+import com.mapbox.navigation.core.adasis.AdasisConfig
+import com.mapbox.navigation.core.adasis.AdasisConfigDataSending
+import com.mapbox.navigation.core.adasis.AdasisMessageBinaryFormat
 import com.mapbox.navigation.core.directions.session.RoutesObserver
 import com.mapbox.navigation.core.replay.MapboxReplayer
 import com.mapbox.navigation.core.replay.ReplayLocationEngine
@@ -72,15 +76,12 @@ import com.mapbox.navigation.ui.maps.route.line.model.MapboxRouteLineOptions
 import com.mapbox.navigation.ui.maps.route.line.model.NavigationRouteLine
 import com.mapbox.navigation.ui.maps.route.line.model.RouteLineColorResources
 import com.mapbox.navigation.ui.maps.route.line.model.RouteLineResources
-import com.mapbox.navigator.ADASISv2Message
-import com.mapbox.navigator.ADASISv2MessageCallback
-import com.mapbox.navigator.AdasisConfigBuilder
 import java.io.File
 import java.lang.ref.WeakReference
 import java.util.*
 import kotlin.collections.ArrayDeque
 
-
+@OptIn(ExperimentalPreviewMapboxNavigationAPI::class)
 class AdasisActivity : AppCompatActivity(), PermissionsListener, OnMapLongClickListener {
 
     private companion object {
@@ -218,11 +219,12 @@ class AdasisActivity : AppCompatActivity(), PermissionsListener, OnMapLongClickL
         private val adasisMsgRender by lazy {
             AdasisMsgRender(viewBinding)
         }
-        val messages = ArrayList<ADASISv2Message>()
 
-        override fun run(message: ADASISv2Message) {
-            messages.add(message)
-            adasisMsgRender.render(message.toHex())
+        val messages = ArrayList<List<Byte>>()
+
+        override fun onMessage(messageBuffer: List<Byte>) {
+            messages.add(messageBuffer)
+            adasisMsgRender.render(messageBuffer.toByteArray().contentToString())
         }
 
         fun reset() {
@@ -388,7 +390,6 @@ class AdasisActivity : AppCompatActivity(), PermissionsListener, OnMapLongClickL
         )
     }
 
-    @OptIn(ExperimentalPreviewMapboxNavigationAPI::class)
     @SuppressLint("MissingPermission")
     private fun initNavigation() {
         mapboxNavigation.run {
@@ -515,14 +516,15 @@ class AdasisActivity : AppCompatActivity(), PermissionsListener, OnMapLongClickL
         mapboxNavigation.unregisterRoutesObserver(routesObserver)
     }
 
-    @OptIn(ExperimentalPreviewMapboxNavigationAPI::class)
     @SuppressLint("MissingPermission")
     private fun startSimulation(route: NavigationRoute) {
         adasisObserver.reset()
 
-        mapboxNavigation.experimental.setAdasisMessageCallback(
-            adasisObserver,
-            AdasisConfigBuilder.defaultOptions()
+        mapboxNavigation.setAdasisMessageCallback(
+            adasisConfig = AdasisConfig.Builder()
+                .dataSending(AdasisConfigDataSending(AdasisMessageBinaryFormat.FlatBuffers))
+                .build(),
+            callback = adasisObserver
         )
 
         val replayData = replayRouteMapper.mapDirectionsRouteGeometry(route.directionsRoute)
@@ -560,14 +562,14 @@ class AdasisActivity : AppCompatActivity(), PermissionsListener, OnMapLongClickL
 
         val messages = adasisObserver.messages
         val output = messages.joinToString(",", "[", "]") {
-            "[\"${it.toHex()}\", ${it.toJson()}]"
+            it.toByteArray().contentToString()
         }
         File(path, "/messages.json").printWriter().use { out -> out.print(output) }
     }
 
-    @OptIn(ExperimentalPreviewMapboxNavigationAPI::class)
     private fun stopSimulation() {
-        mapboxNavigation.experimental.resetAdasisMessageCallback()
+        mapboxNavigation.resetAdasisMessageCallback()
+
         saveAdasis()
 
         viewBinding.runAdasis.text = "Run ADASISv2"

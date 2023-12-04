@@ -522,7 +522,7 @@ class AdasisActivity : AppCompatActivity(), PermissionsListener, OnMapLongClickL
 
         mapboxNavigation.setAdasisMessageCallback(
             adasisConfig = AdasisConfig.Builder()
-                .dataSending(AdasisConfigDataSending(AdasisMessageBinaryFormat.FlatBuffers))
+                .dataSending(AdasisConfigDataSending(AdasisMessageBinaryFormat.AdasisV2LittleEndian))
                 .build(),
             callback = adasisObserver
         )

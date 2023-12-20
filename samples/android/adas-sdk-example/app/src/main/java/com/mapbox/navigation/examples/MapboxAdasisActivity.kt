@@ -119,7 +119,7 @@ class AdasisActivity : AppCompatActivity(), PermissionsListener, OnMapLongClickL
             MapboxNavigationProvider.retrieve()
         } else {
             val tileStore = TileStore.create()
-            tileStore.setOption(TileStoreOptions.MAPBOX_APIURL, TileDataDomain.ADAS, Value.valueOf("https://mapbox-adas-api-staging.tilestream.net"))
+            tileStore.setOption(TileStoreOptions.MAPBOX_APIURL, TileDataDomain.ADAS, Value.valueOf(getMapboxAccessTokenFromResources()))
             tileStore.setOption(TileStoreOptions.MAPBOX_ACCESS_TOKEN, TileDataDomain.ADAS, Value.valueOf(getMapboxAccessTokenFromResources()))
             MapboxNavigationProvider.create(
                 NavigationOptions.Builder(this)

@@ -411,14 +411,19 @@ class AdasisActivity : AppCompatActivity(), PermissionsListener, OnMapLongClickL
     }
 
     override fun onMapLongClick(point: Point): Boolean {
-        val currentLocation = navigationLocationProvider.lastLocation
-        if (currentLocation != null) {
-            val originPoint = Point.fromLngLat(
-                currentLocation.longitude,
-                currentLocation.latitude
-            )
-            findRoute(originPoint, point)
-        }
+//        val currentLocation = navigationLocationProvider.lastLocation
+//        if (currentLocation != null) {
+//            val originPoint = Point.fromLngLat(
+//                currentLocation.longitude,
+//                currentLocation.latitude
+//            )
+//            findRoute(originPoint, point)
+//        }
+
+        findRoute(
+            origin = Point.fromLngLat(11.902341, 61.048567),
+            destination = Point.fromLngLat(12.002578907808, 61.09406283866808)
+        )
         return false
     }
 

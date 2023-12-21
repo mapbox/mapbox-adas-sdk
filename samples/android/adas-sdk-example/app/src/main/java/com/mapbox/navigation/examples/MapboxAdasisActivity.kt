@@ -21,6 +21,8 @@ import com.mapbox.android.core.permissions.PermissionsManager
 import com.mapbox.android.core.permissions.PermissionsManager.areLocationPermissionsGranted
 import com.mapbox.api.directions.v5.models.RouteOptions
 import com.mapbox.bindgen.Value
+import com.mapbox.common.LogConfiguration
+import com.mapbox.common.LoggingLevel
 import com.mapbox.common.TileDataDomain
 import com.mapbox.common.TileStore
 import com.mapbox.common.TileStoreOptions
@@ -262,6 +264,9 @@ class AdasisActivity : AppCompatActivity(), PermissionsListener, OnMapLongClickL
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        LogConfiguration.setLoggingLevel(LoggingLevel.DEBUG)
+
         if (!isMapboxTokenProvided()) {
             showNoTokenErrorDialog()
             return
@@ -420,8 +425,12 @@ class AdasisActivity : AppCompatActivity(), PermissionsListener, OnMapLongClickL
 //            findRoute(originPoint, point)
 //        }
 
+        val origin = Point.fromLngLat(11.996623609194419, 61.088675014533074)
+
+        mapboxMap.setCamera(CameraOptions.Builder().center(origin).build())
+
         findRoute(
-            origin = Point.fromLngLat(11.902341, 61.048567),
+            origin = origin,
             destination = Point.fromLngLat(12.002578907808, 61.09406283866808)
         )
         return false

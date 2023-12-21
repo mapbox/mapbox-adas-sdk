@@ -223,8 +223,8 @@ class AdasisActivity : AppCompatActivity(), PermissionsListener, OnMapLongClickL
         val messages = ArrayList<List<Byte>>()
 
         override fun onMessage(messageBuffer: List<Byte>) {
-            messages.add(messageBuffer)
-            adasisMsgRender.render(messageBuffer.toByteArray().contentToString())
+            //messages.add(messageBuffer)
+            adasisMsgRender.render(messageBuffer.joinToString("") { String.format("%02x", it) })
         }
 
         fun reset() {

@@ -41,12 +41,19 @@ import com.mapbox.maps.plugin.locationcomponent.location
 import com.mapbox.navigation.base.ExperimentalPreviewMapboxNavigationAPI
 import com.mapbox.navigation.base.extensions.applyDefaultNavigationOptions
 import com.mapbox.navigation.base.extensions.applyLanguageAndVoiceUnitOptions
+import com.mapbox.navigation.base.options.DeviceProfile
+import com.mapbox.navigation.base.options.IncidentsOptions
 import com.mapbox.navigation.base.options.NavigationOptions
 import com.mapbox.navigation.base.options.RoutingTilesOptions
 import com.mapbox.navigation.base.route.NavigationRoute
 import com.mapbox.navigation.base.route.NavigationRouterCallback
 import com.mapbox.navigation.base.route.RouterFailure
 import com.mapbox.navigation.base.route.RouterOrigin
+import com.mapbox.navigation.base.trip.model.eh.EHorizonPosition
+import com.mapbox.navigation.base.trip.model.roadobject.RoadObjectEnterExitInfo
+import com.mapbox.navigation.base.trip.model.roadobject.RoadObjectPassInfo
+import com.mapbox.navigation.base.trip.model.roadobject.RoadObjectType
+import com.mapbox.navigation.base.trip.model.roadobject.distanceinfo.RoadObjectDistanceInfo
 import com.mapbox.navigation.core.MapboxNavigationProvider
 import com.mapbox.navigation.core.adasis.ADASISv2MessageCallback
 import com.mapbox.navigation.core.adasis.AdasisConfig
@@ -62,6 +69,7 @@ import com.mapbox.navigation.core.replay.route.ReplayRouteMapper
 import com.mapbox.navigation.core.trip.session.LocationMatcherResult
 import com.mapbox.navigation.core.trip.session.LocationObserver
 import com.mapbox.navigation.core.trip.session.RouteProgressObserver
+import com.mapbox.navigation.core.trip.session.eh.EHorizonObserver
 import com.mapbox.navigation.examples.databinding.LayoutActivityAdasisBinding
 import com.mapbox.navigation.ui.maps.NavigationStyles
 import com.mapbox.navigation.ui.maps.camera.NavigationCamera
@@ -122,8 +130,32 @@ class AdasisActivity : AppCompatActivity(), PermissionsListener, OnMapLongClickL
             MapboxNavigationProvider.retrieve()
         } else {
             val tileStore = TileStore.create()
-            tileStore.setOption(TileStoreOptions.MAPBOX_APIURL, TileDataDomain.ADAS, Value.valueOf("https://mapbox-adas-api-staging.tilestream.net"))
-            tileStore.setOption(TileStoreOptions.MAPBOX_ACCESS_TOKEN, TileDataDomain.ADAS, Value.valueOf(getMapboxAccessTokenFromResources()))
+            tileStore.setOption(
+                TileStoreOptions.MAPBOX_APIURL,
+                TileDataDomain.ADAS,
+                Value.valueOf("https://mapbox-adas-api-staging.tilestream.net")
+            )
+            tileStore.setOption(
+                TileStoreOptions.MAPBOX_ACCESS_TOKEN,
+                TileDataDomain.ADAS,
+                Value.valueOf(getMapboxAccessTokenFromResources())
+            )
+
+            val incidentOptions = IncidentsOptions.Builder()
+                .apiUrl("https://api.mapbox.com/traffic/incidents/v0")
+                .graph("inrix")
+                .build()
+            val deviceProfile = DeviceProfile.Builder()
+                .customConfig("""
+            {
+              "incidents": {
+                  "ltsSearchRadius": 10000.0,
+                  "ltsUpdatesIntervalSeconds": 10.0
+                  }
+            }
+                """.trimIndent())
+                .build()
+
             MapboxNavigationProvider.create(
                 NavigationOptions.Builder(this)
                     .routingTilesOptions(
@@ -133,6 +165,8 @@ class AdasisActivity : AppCompatActivity(), PermissionsListener, OnMapLongClickL
                     )
                     .accessToken(getMapboxAccessTokenFromResources())
                     .locationEngine(ReplayLocationEngine(mapboxReplayer))
+                    .incidentsOptions(incidentOptions)
+                    .deviceProfile(deviceProfile)
                     .build()
             )
         }
@@ -245,6 +279,31 @@ class AdasisActivity : AppCompatActivity(), PermissionsListener, OnMapLongClickL
             viewportDataSource.onLocationChanged(locationMatcherResult.enhancedLocation)
             viewportDataSource.evaluate()
         }
+    }
+
+    private val eHorizonObserver = object : EHorizonObserver {
+        override fun onPositionUpdated(
+            position: EHorizonPosition,
+            distances: List<RoadObjectDistanceInfo>
+        ) {
+            Log.d(
+                "EHorizonObserver", "onPositionUpdated: distances count ${distances.size}")
+            mapboxNavigation.roadObjectsStore.getUpcomingRoadObjects(distances)
+                .filter { it.roadObject.objectType == RoadObjectType.INCIDENT }
+                .forEach {
+                    Log.d(
+                        "EHorizonObserver",
+                        "EHP_INCIDENT '${it.roadObject.id}' distance to start: ${it.distanceToStart}"
+                    )
+                }
+        }
+
+        override fun onRoadObjectEnter(objectEnterExitInfo: RoadObjectEnterExitInfo) {}
+        override fun onRoadObjectExit(objectEnterExitInfo: RoadObjectEnterExitInfo) {}
+        override fun onRoadObjectPassed(objectPassInfo: RoadObjectPassInfo) {}
+        override fun onRoadObjectAdded(roadObjectId: String) {}
+        override fun onRoadObjectUpdated(roadObjectId: String) {}
+        override fun onRoadObjectRemoved(roadObjectId: String) {}
     }
 
     private lateinit var navigationCamera: NavigationCamera
@@ -401,8 +460,9 @@ class AdasisActivity : AppCompatActivity(), PermissionsListener, OnMapLongClickL
             registerLocationObserver(locationObserver)
             registerRouteProgressObserver(replayProgressObserver)
             registerRoutesObserver(routesObserver)
+            registerEHorizonObserver(eHorizonObserver)
         }
-        setFirstPoint(11.581980, 48.135125)
+        setFirstPoint(13.321094289489906,52.56588999985638)
     }
 
     private fun setFirstPoint(lng: Double, lat: Double) {
@@ -411,28 +471,25 @@ class AdasisActivity : AppCompatActivity(), PermissionsListener, OnMapLongClickL
             ReplayEventLocation(lng, lat, null, null, null, null, null, null)
         )
         mapboxReplayer.pushEvents(listOf(event))
-        mapboxReplayer.playbackSpeed(1.5)
+        mapboxReplayer.playbackSpeed(0.5)
         mapboxReplayer.play()
     }
 
     override fun onMapLongClick(point: Point): Boolean {
         val currentLocation = navigationLocationProvider.lastLocation
+
         if (currentLocation != null) {
             val originPoint = Point.fromLngLat(
                 currentLocation.longitude,
                 currentLocation.latitude
             )
-            findRoute(originPoint, point)
+            mapboxMap.setCamera(CameraOptions.Builder().center(originPoint).build())
+
+            findRoute(
+                origin = originPoint,
+                destination = Point.fromLngLat(13.300574672861302,52.569835181542885)
+            )
         }
-//
-//        val origin = Point.fromLngLat(11.996623609194419, 61.088675014533074)
-//
-//        mapboxMap.setCamera(CameraOptions.Builder().center(origin).build())
-//
-//        findRoute(
-//            origin = origin,
-//            destination = Point.fromLngLat(12.002578907808, 61.09406283866808)
-//        )
         return false
     }
 
@@ -519,6 +576,9 @@ class AdasisActivity : AppCompatActivity(), PermissionsListener, OnMapLongClickL
         mapboxNavigation.registerRouteProgressObserver(replayProgressObserver)
         mapboxNavigation.registerRouteProgressObserver(routeProgressObserver)
         mapboxNavigation.registerRoutesObserver(routesObserver)
+        mapboxNavigation.registerEHorizonObserver(eHorizonObserver)
+
+
     }
 
     override fun onStop() {
@@ -528,6 +588,7 @@ class AdasisActivity : AppCompatActivity(), PermissionsListener, OnMapLongClickL
         mapboxNavigation.unregisterRouteProgressObserver(routeProgressObserver)
         mapboxNavigation.unregisterLocationObserver(locationObserver)
         mapboxNavigation.unregisterRoutesObserver(routesObserver)
+        mapboxNavigation.unregisterEHorizonObserver(eHorizonObserver)
     }
 
     @SuppressLint("MissingPermission")

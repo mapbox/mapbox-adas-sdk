@@ -172,7 +172,7 @@ class AdasisActivity : AppCompatActivity(), PermissionsListener, OnMapLongClickL
                     .accessToken(getMapboxAccessTokenFromResources())
                     .locationEngine(ReplayLocationEngine(mapboxReplayer))
                     .incidentsOptions(incidentOptions)
-                    .deviceProfile(deviceProfile)
+                    .deviceProfile(deviceProfile).navigatorPredictionMillis(0)
                     .build()
             )
         }

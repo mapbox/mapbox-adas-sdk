@@ -42,6 +42,7 @@ import com.mapbox.navigation.base.ExperimentalPreviewMapboxNavigationAPI
 import com.mapbox.navigation.base.extensions.applyDefaultNavigationOptions
 import com.mapbox.navigation.base.extensions.applyLanguageAndVoiceUnitOptions
 import com.mapbox.navigation.base.options.DeviceProfile
+import com.mapbox.navigation.base.options.DeviceType
 import com.mapbox.navigation.base.options.IncidentsOptions
 import com.mapbox.navigation.base.options.NavigationOptions
 import com.mapbox.navigation.base.options.RoutingTilesOptions
@@ -55,10 +56,11 @@ import com.mapbox.navigation.base.trip.model.roadobject.RoadObjectPassInfo
 import com.mapbox.navigation.base.trip.model.roadobject.RoadObjectType
 import com.mapbox.navigation.base.trip.model.roadobject.distanceinfo.RoadObjectDistanceInfo
 import com.mapbox.navigation.core.MapboxNavigationProvider
-import com.mapbox.navigation.core.adasis.ADASISv2MessageCallback
+import com.mapbox.navigation.core.adasis.AdasisV2MessageCallback
 import com.mapbox.navigation.core.adasis.AdasisConfig
-import com.mapbox.navigation.core.adasis.AdasisConfigDataSending
+import com.mapbox.navigation.core.adasis.AdasisDataSendingConfig
 import com.mapbox.navigation.core.adasis.AdasisMessageBinaryFormat
+import com.mapbox.navigation.core.adasis.AdasisMessageContext
 import com.mapbox.navigation.core.directions.session.RoutesObserver
 import com.mapbox.navigation.core.replay.MapboxReplayer
 import com.mapbox.navigation.core.replay.ReplayLocationEngine
@@ -133,8 +135,9 @@ class AdasisActivity : AppCompatActivity(), PermissionsListener, OnMapLongClickL
             tileStore.setOption(
                 TileStoreOptions.MAPBOX_APIURL,
                 TileDataDomain.ADAS,
-                Value.valueOf("https://mapbox-adas-api-staging.tilestream.net")
+                Value.valueOf("https://api.mapbox.com")
             )
+
             tileStore.setOption(
                 TileStoreOptions.MAPBOX_ACCESS_TOKEN,
                 TileDataDomain.ADAS,
@@ -145,13 +148,16 @@ class AdasisActivity : AppCompatActivity(), PermissionsListener, OnMapLongClickL
                 .apiUrl("https://api.mapbox.com/traffic/incidents/v0")
                 .graph("inrix")
                 .build()
-            val deviceProfile = DeviceProfile.Builder()
+            val deviceProfile = DeviceProfile.Builder().deviceType(DeviceType.AUTOMOBILE)
                 .customConfig("""
             {
               "incidents": {
                   "ltsSearchRadius": 10000.0,
                   "ltsUpdatesIntervalSeconds": 10.0
-                  }
+                  },
+              "cache": {
+                  "adasCache": { "enabled": true } 
+              }
             }
                 """.trimIndent())
                 .build()
@@ -251,14 +257,14 @@ class AdasisActivity : AppCompatActivity(), PermissionsListener, OnMapLongClickL
         }
     }
 
-    private val adasisObserver = object : ADASISv2MessageCallback {
+    private val adasisObserver = object : AdasisV2MessageCallback {
         private val adasisMsgRender by lazy {
             AdasisMsgRender(viewBinding)
         }
 
         val messages = ArrayList<List<Byte>>()
 
-        override fun onMessage(messageBuffer: List<Byte>) {
+        override fun onMessage(messageBuffer: List<Byte>, context: AdasisMessageContext) {
             //messages.add(messageBuffer)
             adasisMsgRender.render(messageBuffer.joinToString("") { String.format("%02x", it) })
         }
@@ -471,7 +477,7 @@ class AdasisActivity : AppCompatActivity(), PermissionsListener, OnMapLongClickL
             ReplayEventLocation(lng, lat, null, null, null, null, null, null)
         )
         mapboxReplayer.pushEvents(listOf(event))
-        mapboxReplayer.playbackSpeed(0.5)
+        mapboxReplayer.playbackSpeed(0.25)
         mapboxReplayer.play()
     }
 
@@ -597,7 +603,7 @@ class AdasisActivity : AppCompatActivity(), PermissionsListener, OnMapLongClickL
 
         mapboxNavigation.setAdasisMessageCallback(
             adasisConfig = AdasisConfig.Builder()
-                .dataSending(AdasisConfigDataSending(AdasisMessageBinaryFormat.AdasisV2LittleEndian))
+                .dataSendingConfig(AdasisDataSendingConfig.Builder(AdasisMessageBinaryFormat.AdasisV2LittleEndian).messagesInPackage(1).build())
                 .build(),
             callback = adasisObserver
         )
